@@ -4,8 +4,7 @@ public interface Character {
     void setHealth(int health);
     int getMoveDistance();
     void setMoveDistance(int distance);
-    String getSkill();
-    void setSkill(String skillName);
-    void Skillrange(Graphics2D g2d); // 使用技能，繪製相關效果
-    void drawAppearance(Graphics2D g2d); // 繪製角色外觀
+    void skill(int range,int damage);
+    void circle(Graphics2D g2d);
+    void drawAppearance(Graphics2D g2d);
 }

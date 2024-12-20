@@ -84,11 +84,12 @@ public class GamePanel extends JPanel {
                     if (war.Body.contains(click_pos)) {
                         showControlPanel(war);
                         war.setcontrol(true);
+                        war.state=State.MOVE;
                         System.out.println("Select : " + war.getName());
                         gamePanel.repaint();
                         return;
                     }
-                    if(war.gercontrol() && war.rangeHitBox.contains(click_pos)){
+                    if(war.rangeHitBox.contains(click_pos)){
                         System.out.println("true");
                         war.Move(click_pos);
                         gamePanel.repaint();
@@ -113,7 +114,12 @@ public class GamePanel extends JPanel {
         testWar.addSkill(new Skill("sk1", 5, 50));
         testWar.addSkill(new Skill("sk2", 5, 70));
         testWar.addSkill(new Skill("sk3", 5, 90));
+        Warrior testArcher = new Warrior(100, 1, 50, new Point(150, 150), null);
+        testArcher.addSkill(new Skill("sk1", 5, 50));
+        testArcher.addSkill(new Skill("sk2", 5, 70));
+        testArcher.addSkill(new Skill("sk3", 5, 90));
         warriors.add(testWar);
+        warriors.add(testArcher);
     }
 
     @Override
@@ -128,6 +134,7 @@ public class GamePanel extends JPanel {
         for (Skill skill : warrior.getSkills()) {
             JButton button = new JButton(skill.getName());
             button.addActionListener(e->{
+                //warrior.state=State.ATTACK;
                 skill.setControl(true);
                 gamePanel.repaint();
             });

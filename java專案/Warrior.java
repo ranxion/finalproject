@@ -19,6 +19,8 @@ public class Warrior {
     public Ellipse2D rangeHitBox; 
     public BufferedImage image;
 
+    public State state=State.NULL;
+
     public Warrior(int health, int attack, int moveRange, Point position, BufferedImage img) {
         this.health = health;
         this.basicAttack = attack;
@@ -38,7 +40,11 @@ public class Warrior {
     }
 
     public void Move(Point position) {
-        Body = new Rectangle(position.x, position.y, size.x, size.y);
+        if(state==State.MOVE){
+            Body = new Rectangle(position.x, position.y, size.x, size.y);
+            state=State.NULL;
+        }
+
     }
 
     public int getMoveRange() {
@@ -96,6 +102,7 @@ public class Warrior {
             rangeHitBox= new Ellipse2D.Double(cx- moveRange, cy- moveRange,2* moveRange, 2 * moveRange);
             g2d.draw(rangeHitBox);            
         }
+        setcontrol(false);
     }
 
     public void paintSkillRange(Graphics2D g2d,Skill skill){

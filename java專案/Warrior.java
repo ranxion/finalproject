@@ -1,66 +1,118 @@
-import java.awt.*;
-public class Warrior implements Character {
-    private int health,range,damage;
-    private int moveDistance;
-    private Rectangle bounds;
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.geom.Ellipse2D;
+import java.awt.image.BufferedImage;
+import java.util.LinkedList;
 
-    // 建構子
-    public Warrior(int health, int moveDistance) {
+public class Warrior {
+    private int health;
+    private int moveRange;
+    private int basicAttack;
+    private String name;
+    private LinkedList<Skill> Skills;
+    private boolean control=false;
+    private Point size=new Point(30,50);
+    public Rectangle Body;
+    public Ellipse2D rangeHitBox; 
+    public BufferedImage image;
+
+    public Warrior(int health, int attack, int moveRange, Point position, BufferedImage img) {
         this.health = health;
-        this.moveDistance = moveDistance;
-        this.bounds = new Rectangle(50, 50, 60, 80); // 預設角色範圍
+        this.basicAttack = attack;
+        this.moveRange = moveRange;
+        this.Body = new Rectangle(position.x, position.y, size.x, size.y);
+        this.image = img;
+        name = "A New Warrior";
+        Skills = new LinkedList<>();
     }
 
-    // 實作 getHealth
-    @Override
+    public void addSkill(Skill skill) {
+        Skills.add(skill);
+    }
+
+    public LinkedList<Skill> getSkills() {
+        return Skills;
+    }
+
+    public void Move(Point position) {
+        Body = new Rectangle(position.x, position.y, size.x, size.y);
+    }
+
+    public int getMoveRange() {
+        return moveRange;
+    }
+
+    public void setMoveRange(int range) {
+        if (range < 0 || range > 10000) {
+            return;
+        }
+
+        this.moveRange = range;
+    }
+
     public int getHealth() {
         return health;
     }
 
-    // 實作 setHealth
-    @Override
     public void setHealth(int health) {
         this.health = health;
     }
 
-    // 實作 getMoveDistance
+        public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public boolean gercontrol(){
+        return control;
+    }
+
+    public void setcontrol(boolean control) {
+        this.control = control;
+    }
+
+    public void paint(Graphics g) {
+        // 繪製本體
+        if (image != null) {
+            g.drawImage(image, Body.x, Body.y, Body.width, Body.height, null);
+        } else {
+            g.setColor(Color.RED);
+            g.drawRect(Body.x, Body.y, Body.width, Body.height);
+        }
+    }
+    
+    public void paintMoveRange(Graphics2D g2d){
+        // 繪製移動範圍
+        if(control){
+            g2d.setColor(Color.BLACK);
+            int cx = (int) Body.getCenterX();
+            int cy = (int) Body.getCenterY();
+            rangeHitBox= new Ellipse2D.Double(cx- moveRange, cy- moveRange,2* moveRange, 2 * moveRange);
+            g2d.draw(rangeHitBox);            
+        }
+    }
+
+    public void paintSkillRange(Graphics2D g2d,Skill skill){
+        //繪製技能範圍
+        if(skill.getControl()){
+            g2d.setColor(Color.red);
+            int cx = (int) Body.getCenterX();
+            int cy = (int) Body.getCenterY();
+            int range=skill.getRange();
+            rangeHitBox= new Ellipse2D.Double(cx- range, cy- range,2* range, 2 * range);
+            g2d.draw(rangeHitBox);
+        }
+        skill.setControl(false);
+    }
+
     @Override
-    public int getMoveDistance() {
-        return moveDistance;
-    }
-
-    // 實作 setMoveDistance
-    @Override
-    public void setMoveDistance(int distance) {
-        this.moveDistance = distance;
-    }
-
-
-    // 繪製角色外觀
-    public void drawAppearance(Graphics2D g2d) {
-        g2d.setColor(Color.RED);
-        g2d.fillRect(bounds.x, bounds.y, bounds.width, bounds.height); // 劍士的身體
-        g2d.setColor(Color.BLACK);
-        g2d.fillOval(bounds.x + 10, bounds.y - 20, 40, 40); // 劍士的頭部
-    }
-
-    // 繪製技能範圍
-    public void basicrange(int r,String name) {
-        this.r=r;
-    }
-
-    // 獲取角色的邊界 (用於碰撞或點擊檢測)
-    public Rectangle getBounds() {
-        return bounds;
-    }
-
-    // 設定角色位置
-    public void setPosition(int x, int y) {
-        this.bounds.setLocation(x, y);
-    }
-    // 範圍
-    public void Skillrange(Graphics2D g2d) {
-        g2d.setColor(Color.YELLOW);
-        g2d.fillOval(30, 30, 100, 100);
+    public String toString() {
+        return "";
     }
 }

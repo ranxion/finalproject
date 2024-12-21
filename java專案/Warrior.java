@@ -10,21 +10,25 @@ import java.util.LinkedList;
 public class Warrior {
     private int health;
     private int moveRange;
-    private int basicAttack;
+    private int basicAttack; 
     private String name;
     private LinkedList<Skill> Skills;
     private boolean control=false;
-    private Point size=new Point(30,50);
+    public Point size=new Point(30,50);
     public Rectangle Body;
     public Ellipse2D rangeHitBox; 
     public BufferedImage image;
+    private Team team;
+    public Skill selectSkill;
+    public State state=State.NULL;
 
-    public Warrior(int health, int attack, int moveRange, Point position, BufferedImage img) {
+    public Warrior(int health, int attack, int moveRange, BufferedImage img,Team team) {
         this.health = health;
         this.basicAttack = attack;
         this.moveRange = moveRange;
-        this.Body = new Rectangle(position.x, position.y, size.x, size.y);
+        //this.Body = new Rectangle(position.x, position.y, size.x, size.y);
         this.image = img;
+        this.team=team;
         name = "A New Warrior";
         Skills = new LinkedList<>();
     }
@@ -38,7 +42,11 @@ public class Warrior {
     }
 
     public void Move(Point position) {
-        Body = new Rectangle(position.x, position.y, size.x, size.y);
+        if(state==State.MOVE){
+            Body = new Rectangle(position.x, position.y, size.x, size.y);
+            state=State.NULL;
+        }
+
     }
 
     public int getMoveRange() {
@@ -61,7 +69,7 @@ public class Warrior {
         this.health = health;
     }
 
-        public String getName() {
+    public String getName() {
         return name;
     }
 
@@ -96,11 +104,12 @@ public class Warrior {
             rangeHitBox= new Ellipse2D.Double(cx- moveRange, cy- moveRange,2* moveRange, 2 * moveRange);
             g2d.draw(rangeHitBox);            
         }
+        this.setcontrol(false);
     }
 
     public void paintSkillRange(Graphics2D g2d,Skill skill){
         //繪製技能範圍
-        if(skill.getControl()){
+        if(skill.getControl()){            
             g2d.setColor(Color.red);
             int cx = (int) Body.getCenterX();
             int cy = (int) Body.getCenterY();

@@ -8,7 +8,9 @@ public class GamePanel extends JPanel {
     private JPanel gamePanel;       // 主要遊戲畫面
     private JPanel cardPanel;       // 卡牌顯示區
     private JPanel controlPanel;    // 角色控制按鈕區
+    private JPanel EnemycontrolPanel; // 敵方角色資訊區
     private JTextArea infoArea;     // 角色資訊區
+    private JTextArea EnemyinfoArea;    // 敵方角色資訊區
     private LinkedList<Warrior> warriors;      // 所有遊戲角色都存在這
     private Warrior chracter;
     public GameState gameState=GameState.START;
@@ -42,12 +44,15 @@ public class GamePanel extends JPanel {
 
         // 左下部分 (卡牌顯示區)
         cardPanel = new JPanel();
-        //cardPanel.add(new JLabel("卡牌顯示區"));
 
 
         // 右下部分 (控制按鈕和角色資訊區域)
         controlPanel = new JPanel(new GridLayout(1, 4, 10, 10));
         infoArea = new JTextArea();
+
+        // 右中部分 (控制按鈕和角色資訊區域)
+        EnemycontrolPanel = new JPanel(new GridLayout(1, 4, 10, 10));
+        EnemyinfoArea = new JTextArea();
 
         // 合併左側上下版面 (上:下 = 4:1)
         JSplitPane verticalSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, gamePanel, cardPanel);
@@ -60,16 +65,30 @@ public class GamePanel extends JPanel {
         upperRightPanel.setBackground(Color.LIGHT_GRAY);
         upperRightPanel.add(new JLabel("右上區域"));
 
+        // 右中部分
+        JPanel midRightPanel= new JPanel();
+        midRightPanel.setBackground(Color.DARK_GRAY);
+        midRightPanel.add(EnemycontrolPanel, BorderLayout.CENTER);
+        midRightPanel.add(new JScrollPane(EnemyinfoArea), BorderLayout.SOUTH);
+
         // 右下部分 (控制按鈕和角色資訊區域)
         JPanel lowerRightPanel = new JPanel(new BorderLayout());
         lowerRightPanel.setBackground(Color.DARK_GRAY);
         lowerRightPanel.add(controlPanel, BorderLayout.CENTER);
         lowerRightPanel.add(new JScrollPane(infoArea), BorderLayout.SOUTH);
 
-        // 合併右側上下版面 (上:下 = 3:2)
-        JSplitPane verticalRightSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, upperRightPanel, lowerRightPanel);
-        verticalRightSplit.setDividerLocation(3 * windows.getHeight() / 5);
-        verticalRightSplit.setEnabled(true);
+
+        // 分割上方與中間 (1:1)
+        JSplitPane upperMiddleSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, upperRightPanel, midRightPanel);
+        upperMiddleSplit.setDividerLocation(windows.getHeight() / 3); // 設定分隔線位置
+        upperMiddleSplit.setResizeWeight(0.5); // 平分空間
+        upperMiddleSplit.setEnabled(false);   // 禁止調整分隔線
+
+        // 再分割中間與下方 (1:1:1)
+        JSplitPane verticalRightSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, upperMiddleSplit, lowerRightPanel);
+        verticalRightSplit.setDividerLocation(2 * windows.getHeight() / 3); // 設定第二條分隔線位置
+        verticalRightSplit.setResizeWeight(0.67);  // 上部分為 2/3 (自動按比例分配)
+        verticalRightSplit.setEnabled(false);      // 禁止調整分隔線
 
         // 合併左右版面 (左:右 = 2:1)
         JSplitPane horizontalSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, verticalSplit, verticalRightSplit);
@@ -162,7 +181,11 @@ public class GamePanel extends JPanel {
                                                 gamePanel.repaint();
                                                 return;
                                             }
-                                            return;
+                                            else{
+                                                clearEnemyControlPanel();
+                                                EnemyshowControlPanel(chracter);
+                                                return;
+                                            }
                                         }
                                     }
                                     clearControlPanel();
@@ -247,16 +270,19 @@ public class GamePanel extends JPanel {
                                         //判斷是否點擊士兵
                                         if (war.Body!=null && war.Body.contains(click_pos)) {
                                             chracter=war;
-                                            showControlPanel(chracter);
                                             if(chracter.team==Team.RED){
+                                                showControlPanel(chracter);
                                                 gameState=GameState.FIGHT;
                                                 chracter.state=State.MOVE;
                                                 chracter.selectControl=true;
                                                 System.out.println("Select : " + war.getName());
                                                 gamePanel.repaint();
                                                 return;
+                                            }else{
+                                                clearEnemyControlPanel();
+                                                EnemyshowControlPanel(chracter);
+                                                return;
                                             }
-                                            return;
                                         }
                                     }
                                     clearControlPanel();
@@ -268,9 +294,15 @@ public class GamePanel extends JPanel {
                                 //判斷是否點擊士兵
                                 if (war.Body!=null && war.Body.contains(click_pos)) {
                                     chracter=war;
-                                    showControlPanel(chracter);
-                                    System.out.println("Select : " + war.getName());
-                                    return;
+                                    if(chracter.team==Team.BLUE){
+                                        showControlPanel(chracter);
+                                        System.out.println("Select : " + war.getName());
+                                        return;
+                                    }else{
+                                        clearEnemyControlPanel();
+                                        EnemyshowControlPanel(chracter);
+                                        return;
+                                    }
                                 }
                             }
                             clearControlPanel();
@@ -347,6 +379,24 @@ public class GamePanel extends JPanel {
         controlPanel.repaint();
     }
 
+    // 顯示控制按鈕和敵方角色資訊
+    private void EnemyshowControlPanel(Warrior warrior) {
+        EnemycontrolPanel.removeAll();
+        // 添加技能按鈕
+        for (Skill skill : warrior.getSkills()) {
+            JButton button = new JButton(skill.getName());           
+            EnemycontrolPanel.add(button);
+        }
+
+        // 更新角色資訊
+        EnemyinfoArea.setText("[角色資訊]\n");
+        EnemyinfoArea.append("生命值 : " + warrior.getHealth() + "\n");
+        EnemyinfoArea.append("移動距離 : " + warrior.getMoveRange() + "\n");
+
+        EnemycontrolPanel.revalidate();
+        EnemycontrolPanel.repaint();
+    }
+
     //顯示卡牌按鈕
     private void showCardPanel(LinkedList<Warrior> WarriorCards){
         for(Warrior wCard: WarriorCards ){
@@ -371,6 +421,12 @@ public class GamePanel extends JPanel {
         infoArea.setText("");
         controlPanel.revalidate();
         controlPanel.repaint();
+    }
+    private void clearEnemyControlPanel() {
+        EnemycontrolPanel.removeAll();
+        EnemyinfoArea.setText("");
+        EnemycontrolPanel.revalidate();
+        EnemycontrolPanel.repaint();
     }
 }
 

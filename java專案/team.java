@@ -1,4 +1,4 @@
 enum Team{
-    FIRST,
-    SECOND
+    RED,
+    BLUE
 }

@@ -13,12 +13,13 @@ public class Warrior {
     private int basicAttack; 
     private String name;
     private LinkedList<Skill> Skills;
-    private boolean control=false;
+    private boolean Movecontrol=true;
+    public boolean selectControl=false;
     public Point size=new Point(30,50);
     public Rectangle Body;
     public Ellipse2D rangeHitBox; 
     public BufferedImage image;
-    private Team team;
+    public Team team;
     public Skill selectSkill;
     public State state=State.NULL;
 
@@ -42,13 +43,17 @@ public class Warrior {
     }
 
     public void Move(Point position) {
-        if(state==State.MOVE){
+        if(state==State.MOVE && Movecontrol){
             Body = new Rectangle(position.x, position.y, size.x, size.y);
             state=State.NULL;
+            this.setMovecontrol(false);
         }
-
     }
-
+    public void Attack(Warrior attacked) {
+        attacked.setHealth(attacked.getHealth()-selectSkill.getAttack());
+        state=State.NULL;
+        setMovecontrol(false);
+    }
     public int getMoveRange() {
         return moveRange;
     }
@@ -77,12 +82,12 @@ public class Warrior {
         this.name = name;
     }
 
-    public boolean gercontrol(){
-        return control;
+    public boolean getMovecontrol(){
+        return Movecontrol;
     }
 
-    public void setcontrol(boolean control) {
-        this.control = control;
+    public void setMovecontrol(boolean control) {
+        this.Movecontrol = control;
     }
 
     public void paint(Graphics g) {
@@ -97,14 +102,13 @@ public class Warrior {
     
     public void paintMoveRange(Graphics2D g2d){
         // 繪製移動範圍
-        if(control){
+        if(state==State.MOVE && Movecontrol){
             g2d.setColor(Color.BLACK);
             int cx = (int) Body.getCenterX();
             int cy = (int) Body.getCenterY();
             rangeHitBox= new Ellipse2D.Double(cx- moveRange, cy- moveRange,2* moveRange, 2 * moveRange);
             g2d.draw(rangeHitBox);            
-        }
-        this.setcontrol(false);
+        }        
     }
 
     public void paintSkillRange(Graphics2D g2d,Skill skill){

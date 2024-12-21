@@ -12,6 +12,8 @@ public class GamePanel extends JPanel {
     private LinkedList<Warrior> warriors;      // 所有遊戲角色都存在這
     private Warrior chracter;
     public GameState gameState=GameState.START;
+    public turn GameTurn=turn.SECOND;
+    public Team playerTeam=Team.RED;
     public GamePanel(JFrame windows) {
         // 左上部分 (遊戲畫面)
         gamePanel = new JPanel() {
@@ -23,9 +25,11 @@ public class GamePanel extends JPanel {
 
                 // 繪製所有遊戲物件
                 for (Warrior war : warriors) {
-                    if(gameState==GameState.FIGHT && war.Body!=null){
+                    if(war.Body!=null){
                         war.paint(g);
-                        war.paintMoveRange(g2d);
+                        if(war.selectControl){
+                            war.paintMoveRange(g2d);
+                        }
                         for(Skill skill:war.getSkills()){
                             war.paintSkillRange(g2d, skill);                            
                         }
@@ -84,64 +88,195 @@ public class GamePanel extends JPanel {
                 Point click_pos = e.getPoint();
                 System.out.println("Select : " + gameState);
                 System.out.println("Click : " + click_pos.toString());
-                switch (gameState) {
-                    case CALL:
-                        chracter.Body = new Rectangle(click_pos.x, click_pos.y, chracter.size.x, chracter.size.y);
-                        gamePanel.repaint();
-                        gameState=GameState.FIGHT;
-                        System.out.println("Select : " + gameState);
-                        return;                
-                    case FIGHT:
-                        switch (chracter.state) {
-                            //判斷移動
-                            case MOVE:
-                                System.out.println("true");
-                                if(chracter.rangeHitBox.contains(click_pos)){
-                                    chracter.Move(click_pos);
+                switch (GameTurn) {
+                    case FIRST:
+                        if(playerTeam==Team.BLUE){
+                            switch (gameState) {
+                                case CALL:
+                                    chracter.Body = new Rectangle(click_pos.x, click_pos.y, chracter.size.x, chracter.size.y);
                                     gamePanel.repaint();
+                                    gameState=GameState.START;
+                                    System.out.println("Select : " + gameState);
+                                    return;                
+                                case FIGHT:
+                                    switch (chracter.state) {
+                                        //判斷移動
+                                        case MOVE:
+                                            if(chracter.rangeHitBox.contains(click_pos)){
+                                                chracter.Move(click_pos);
+                                                gamePanel.repaint();
+                                                return;
+                                            }
+                                            chracter.selectControl=false;
+                                            chracter.state=State.NULL;
+                                            gameState=GameState.START;
+                                            gamePanel.repaint();
+                                            return;
+                                        //判斷攻擊                 
+                                        case ATTACK:
+                                            for (Warrior war : warriors) {                                       
+                                                //判斷是否點擊士兵
+                                                if (chracter.rangeHitBox.contains(click_pos) && war.Body.contains(click_pos) && chracter.team!=war.team) {
+                                                    System.out.println("success attack : " + war.getName());
+                                                    if(chracter.team==Team.BLUE){
+                                                        chracter.Attack(war);
+                                                        gamePanel.repaint();
+                                                        gameState=GameState.START;
+                                                        return;
+                                                    }
+                                                }
+                                                chracter.state=State.MOVE;
+                                                gamePanel.repaint();
+                                            }         
+                                            return;
+                                        case NULL:
+                                            for (Warrior war : warriors) {                                       
+                                                //判斷是否點擊士兵
+                                                if (war.Body!=null &&war.Body.contains(click_pos)) {
+                                                    chracter=war;
+                                                    showControlPanel(chracter);
+                                                    chracter.state=State.MOVE;
+                                                    chracter.selectControl=true;
+                                                    System.out.println("Select : " + war.getName());
+            
+                                                    return;
+                                                }
+                                                gameState=GameState.START;
+                                                gamePanel.repaint();
+                                            }
+                                            clearControlPanel();
+                                            return;
+                                    }
+                                case START:
+                                    
+                                    for (Warrior war : warriors) {                                       
+                                        //判斷是否點擊士兵
+                                        if (war.Body!=null && war.Body.contains(click_pos)) {
+                                            chracter=war;
+                                            showControlPanel(chracter);
+                                            if(chracter.team==Team.BLUE){
+                                                gameState=GameState.FIGHT;
+                                                chracter.state=State.MOVE;
+                                                chracter.selectControl=true;
+                                                System.out.println("Select : " + war.getName());
+                                                gamePanel.repaint();
+                                                return;
+                                            }
+                                            return;
+                                        }
+                                    }
+                                    clearControlPanel();
+                                    return;
+                            }
+                        }
+                        else{
+                            for (Warrior war : warriors) {                                       
+                                //判斷是否點擊士兵
+                                if (war.Body!=null && war.Body.contains(click_pos)) {
+                                    chracter=war;
+                                    showControlPanel(chracter);
+                                    System.out.println("Select : " + war.getName());
                                     return;
                                 }
-                                chracter.setcontrol(false);
-                                chracter.state=State.NULL;
-                                gamePanel.repaint();
-                                return;
-                            //判斷攻擊                 
-                            case ATTACK:
-                                for (Warrior war : warriors) {                                       
-                                    //判斷是否點擊士兵
-                                    if (chracter.rangeHitBox.contains(click_pos) && war.Body.contains(click_pos) && war!=chracter) {
-                                        System.out.println("success attack : " + war.getName());
-                                        war.setHealth(war.getHealth()-chracter.selectSkill.getRange());
-                                        gamePanel.repaint();
-                                        chracter.state=State.NULL;
-                                        return;
-                                    }
-                                    chracter.state=State.MOVE;
-                                    chracter.setcontrol(true);
-                                    gamePanel.repaint();
-                                }         
-                                return;
-                            case NULL:
-                                for (Warrior war : warriors) {                                       
-                                    //判斷是否點擊士兵
-                                    if (war.Body!=null &&war.Body.contains(click_pos)) {
-                                        showControlPanel(war);
-                                        war.state=State.MOVE;
-                                        war.setcontrol(true);
-                                        System.out.println("Select : " + war.getName());
-                                        chracter=war;
-                                        gamePanel.repaint();
-                                        return;
-                                    }
-                                    war.setcontrol(false);
-                                    gamePanel.repaint();
-                                }
-                                clearControlPanel();
-                                return;
+                            }
+                            clearControlPanel();
+                            return;
                         }
-                    case START:
-                        
-                }                
+                
+                    case SECOND:
+                        if(playerTeam==Team.RED){
+                            switch (gameState) {
+                                case CALL:
+                                    chracter.Body = new Rectangle(click_pos.x, click_pos.y, chracter.size.x, chracter.size.y);
+                                    gamePanel.repaint();
+                                    gameState=GameState.START;
+                                    System.out.println("Select : " + gameState);
+                                    return;                
+                                case FIGHT:
+                                    switch (chracter.state) {
+                                        //判斷移動
+                                        case MOVE:
+                                            if(chracter.rangeHitBox.contains(click_pos)){
+                                                chracter.Move(click_pos);
+                                                gamePanel.repaint();
+                                                return;
+                                            }
+                                            chracter.selectControl=false;
+                                            chracter.state=State.NULL;
+                                            gameState=GameState.START;
+                                            gamePanel.repaint();
+                                            return;
+                                        //判斷攻擊                 
+                                        case ATTACK:
+                                            for (Warrior war : warriors) {                                       
+                                                //判斷是否點擊士兵
+                                                if (chracter.rangeHitBox.contains(click_pos) && war.Body.contains(click_pos) && chracter.team!=war.team) {
+                                                    System.out.println("success attack : " + war.getName());
+                                                    if(chracter.team==Team.RED){
+                                                        chracter.Attack(war);
+                                                        gamePanel.repaint();
+                                                        gameState=GameState.START;
+                                                        return;
+                                                    }
+                                                }
+                                                chracter.state=State.MOVE;
+                                                gamePanel.repaint();
+                                            }         
+                                            return;
+                                        case NULL:
+                                            for (Warrior war : warriors) {                                       
+                                                //判斷是否點擊士兵
+                                                if (war.Body!=null &&war.Body.contains(click_pos)) {
+                                                    chracter=war;
+                                                    showControlPanel(chracter);
+                                                    chracter.state=State.MOVE;
+                                                    chracter.selectControl=true;
+                                                    System.out.println("Select : " + war.getName());
+            
+                                                    return;
+                                                }
+                                                gameState=GameState.START;
+                                                gamePanel.repaint();
+                                            }
+                                            clearControlPanel();
+                                            return;
+                                    }
+                                case START:
+                                    
+                                    for (Warrior war : warriors) {                                       
+                                        //判斷是否點擊士兵
+                                        if (war.Body!=null && war.Body.contains(click_pos)) {
+                                            chracter=war;
+                                            showControlPanel(chracter);
+                                            if(chracter.team==Team.RED){
+                                                gameState=GameState.FIGHT;
+                                                chracter.state=State.MOVE;
+                                                chracter.selectControl=true;
+                                                System.out.println("Select : " + war.getName());
+                                                gamePanel.repaint();
+                                                return;
+                                            }
+                                            return;
+                                        }
+                                    }
+                                    clearControlPanel();
+                                    return;
+                            }
+                        }
+                        else{
+                            for (Warrior war : warriors) {                                       
+                                //判斷是否點擊士兵
+                                if (war.Body!=null && war.Body.contains(click_pos)) {
+                                    chracter=war;
+                                    showControlPanel(chracter);
+                                    System.out.println("Select : " + war.getName());
+                                    return;
+                                }
+                            }
+                            clearControlPanel();
+                            return;
+                        }
+                }               
             }            
         });
         
@@ -152,12 +287,12 @@ public class GamePanel extends JPanel {
     private void init() {
         warriors = new LinkedList<>();
 
-        Warrior testWar = new Warrior(100, 1, 50, null,Team.FIRST);
+        Warrior testWar = new Warrior(100, 1, 50, null,Team.BLUE);
         testWar.setName("fighter");
         testWar.addSkill(new Skill("sk1", 5, 50));
         testWar.addSkill(new Skill("sk2", 5, 70));
         testWar.addSkill(new Skill("sk3", 5, 90));
-        Warrior testArcher = new Warrior(100, 1, 50, null,Team.SECOND);
+        Warrior testArcher = new Warrior(100, 1, 50, null,Team.RED);
         testArcher.addSkill(new Skill("sk1", 5, 50));
         testArcher.addSkill(new Skill("sk2", 5, 70));
         testArcher.addSkill(new Skill("sk3", 5, 90));
@@ -180,10 +315,25 @@ public class GamePanel extends JPanel {
         for (Skill skill : warrior.getSkills()) {
             JButton button = new JButton(skill.getName());
             button.addActionListener(e->{
-                warrior.state=State.ATTACK;
-                warrior.selectSkill=skill;
-                skill.setControl(true);
-                gamePanel.repaint();
+                switch (GameTurn) {
+                    case FIRST:
+                        if(playerTeam==Team.BLUE && chracter.team==Team.BLUE){
+                            warrior.state=State.ATTACK;
+                            warrior.selectSkill=skill;
+                            skill.setControl(true);
+                            gamePanel.repaint();
+                        }
+                        break;
+                
+                    default:
+                        if(playerTeam==Team.RED && chracter.team==Team.RED){
+                            warrior.state=State.ATTACK;
+                            warrior.selectSkill=skill;
+                            skill.setControl(true);
+                            gamePanel.repaint();
+                        }
+                        break;
+                }
             });
             controlPanel.add(button);
         }
@@ -202,6 +352,10 @@ public class GamePanel extends JPanel {
         for(Warrior wCard: WarriorCards ){
             JButton button = new JButton(wCard.getName());
             button.addActionListener(e->{
+                if(chracter!=null){
+                    chracter.state=State.NULL;
+                    gamePanel.repaint();
+                }
                 chracter=wCard;
                 gameState=GameState.CALL;
                 System.out.println("Select : " + gameState);

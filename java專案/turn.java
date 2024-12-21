@@ -1,0 +1,4 @@
+enum turn{
+    FIRST,
+    SECOND
+}

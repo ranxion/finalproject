@@ -1,6 +1,5 @@
 enum GameState{
     CALL,
     FIGHT,
-    START,
-    PREPARE
+    START
 }

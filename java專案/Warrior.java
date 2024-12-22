@@ -5,12 +5,13 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.geom.Ellipse2D;
 import java.awt.image.BufferedImage;
+import java.io.Serializable;
 import java.util.LinkedList;
 
-public class Warrior {
+public class Warrior implements Serializable{
+    private static final long serialVersionUID = 1L;
     private int health;
     private int moveRange;
-    private int basicAttack; 
     private String name;
     private LinkedList<Skill> Skills;
     private boolean Movecontrol=true;
@@ -23,9 +24,8 @@ public class Warrior {
     public Skill selectSkill;
     public State state=State.NULL;
 
-    public Warrior(int health, int attack, int moveRange, BufferedImage img,Team team) {
+    public Warrior(int health,int moveRange, BufferedImage img,Team team) {
         this.health = health;
-        this.basicAttack = attack;
         this.moveRange = moveRange;
         //this.Body = new Rectangle(position.x, position.y, size.x, size.y);
         this.image = img;

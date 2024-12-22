@@ -5,11 +5,11 @@ enum Turn{
     public String toString() {
         switch (this) {
             case FIRST:
-                return "Player 1's Turn";
+                return "BlueTeam's Turn";
             case SECOND:
-                return "Player 2's Turn";
+                return "RedTeam's Turn";
             default:
-                return "Unknown Turn";
+                return "Unknown's Turn";
         }
     }
 }

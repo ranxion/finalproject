@@ -102,7 +102,7 @@ public class Warrior implements Serializable{
     
     public void paintMoveRange(Graphics2D g2d){
         // 繪製移動範圍
-        if(state==State.MOVE && Movecontrol){
+        if(state==State.MOVE && Movecontrol && selectControl){
             g2d.setColor(Color.BLACK);
             int cx = (int) Body.getCenterX();
             int cy = (int) Body.getCenterY();

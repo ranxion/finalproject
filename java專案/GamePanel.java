@@ -25,16 +25,16 @@ public class GamePanel extends JPanel {
     private ObjectInputStream in;
     private Socket socket;
 
-    public GamePanel(JFrame window, String serverAddress, int port) {
-        try {
-            socket = new Socket(serverAddress, port);
-            out = new ObjectOutputStream(socket.getOutputStream());
-            in = new ObjectInputStream(socket.getInputStream());
+    public GamePanel(JFrame window, String serverAddress, int port) throws IOException, ClassNotFoundException {
+        socket = new Socket(serverAddress, port);
+        out = new ObjectOutputStream(socket.getOutputStream());
+        in = new ObjectInputStream(socket.getInputStream());
 
-            new Thread(this::listenToServer).start();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        // 接收伺服器分配的 Team
+        playerTeam = (Team) in.readObject();
+        System.out.println("Assigned team: " + playerTeam);
+
+        new Thread(this::listenToServer).start();
 
         initializePanels(window);
         initializeGame();
@@ -484,6 +484,9 @@ public class GamePanel extends JPanel {
     
                     // 重新繪製遊戲畫面
                     repaint();
+                } else if (received instanceof Turn) {
+                    GameTurn = (Turn) received;
+                    System.out.println("Current turn: " + GameTurn);
                 }
             }
         } catch (IOException | ClassNotFoundException e) {
@@ -528,7 +531,7 @@ public class GamePanel extends JPanel {
                 return;
             }
         });    
-        turnPanel.add(new JLabel(GameTurn.toString()),BorderLayout.NORTH);    
+        turnPanel.add(new JLabel(GameTurn.toString()),BorderLayout.CENTER);    
         turnPanel.add(endTurnButton,BorderLayout.SOUTH);       
         turnPanel.revalidate();
         turnPanel.repaint();

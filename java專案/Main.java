@@ -1,17 +1,26 @@
-
+// Main.java
 import javax.swing.JFrame;
-
 
 public class Main {
     public static void main(String[] args) {
-        JFrame Windows = new JFrame("New Game");
-        Windows.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        Windows.setSize(1280, 800);
-        Windows.setResizable(false);
-        Windows.setFocusable(true);
+        String serverAddress = "localhost";
+        int port = 8080;
 
-        GamePanel gameWindow = new GamePanel(Windows);
-        Windows.add(gameWindow);
-        Windows.setVisible(true);
+        JFrame window = new JFrame("Multiplayer Game");
+        window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        window.setSize(1280, 800);
+        window.setResizable(false);
+
+        try {
+            GamePanel gamePanel = new GamePanel(window, serverAddress, port);
+            window.add(gamePanel);
+        } catch (Exception e) {
+            System.err.println("Unable to connect to server: " + e.getMessage());
+            e.printStackTrace();
+            return;
+        }
+
+        window.setVisible(true);
     }
 }
+

@@ -65,7 +65,10 @@ public class GameServer {
                     handleSummonRequest((SummonRequest) received, clientSocket);
                 } else if (received instanceof Warrior) {
                     Warrior updatedWarrior = (Warrior) received;
-                    warriors.put(updatedWarrior.getName(), updatedWarrior);
+                    synchronized (warriors) {
+                        warriors.put(updatedWarrior.getName(), updatedWarrior);
+                    }
+                    System.out.println("Updated warrior: " + updatedWarrior.getName());
                     broadcastGameState();
                     checkVictory(); // 每次角色狀態更新後檢查勝利條件
                 } else if ("END_TURN".equals(received)) {
@@ -74,6 +77,7 @@ public class GameServer {
                 }
             }
         } catch (IOException | ClassNotFoundException e) {
+            System.err.println("Error handling client data: " + e.getMessage());
             e.printStackTrace();
         } finally {
             disconnectClient(clientSocket);
@@ -125,35 +129,35 @@ public class GameServer {
     }
 
     private void initializeKings() {
-        Warrior blueKing = new Warrior(100, 0,null, Team.BLUE);
+        Warrior blueKing = new Warrior(100, 0,null, Team.BLUE,type.Fighter);
         blueKing.updatePosition(new Point(0, panelHeight / 2 - blueKing.size.y / 2));
         blueKing.setName("King_Blue");
-        blueKing.addSkill(new Skill("Royal Strike", 50, 2));
+        blueKing.addSkill(new Skill("Royal Strike", 50, 50,2));
         warriors.put(blueKing.getName(), blueKing); // 加入藍隊國王到角色列表
     
-        Warrior redKing = new Warrior(100, 0,null, Team.RED);
+        Warrior redKing = new Warrior(100, 0,null, Team.RED,type.Fighter);
         redKing.updatePosition(new Point(panelWidth - redKing.size.x, panelHeight / 2 - redKing.size.y / 2));
         redKing.setName("King_Red");
-        redKing.addSkill(new Skill("Royal Strike", 50, 2));
+        redKing.addSkill(new Skill("Royal Strike", 50, 50,2));
         warriors.put(redKing.getName(), redKing); // 加入紅隊國王到角色列表
     }
     
 
     private void createWarriorsForTeam(Team team) {
-        Warrior fighter = new Warrior(100, 150, null, team);
-        fighter.setName("Fighte_r"+ team);
-        fighter.addSkill(new Skill("Skill 1", 25, 50));
-        fighter.addSkill(new Skill("Skill 2", 5, 70));
+        Warrior fighter = new Warrior(100, 150, null, team,type.Fighter);
+        fighter.setName("Fighter_"+ team);
+        fighter.addSkill(new Skill("Skill 1", 25, 50,0));
+        fighter.addSkill(new Skill("Skill 2", 50, 70,1));
 
-        Warrior archer = new Warrior(50, 80, null, team);
+        Warrior archer = new Warrior(50, 80, null, team,type.Archer);
         archer.setName("Archer_" + team);
-        archer.addSkill(new Skill("Skill 1", 35, 120));
-        archer.addSkill(new Skill("Skill 2", 600, 150));
+        archer.addSkill(new Skill("Skill 1", 35, 120,0));
+        archer.addSkill(new Skill("Skill 2", 70, 150,3));
 
-        Warrior knight = new Warrior(80, 300, null, team);
+        Warrior knight = new Warrior(80, 300, null, team,type.Knight);
         knight.setName("Knight_" + team);
-        knight.addSkill(new Skill("Skill 1", 40, 30));
-        knight.addSkill(new Skill("Skill 2", 70, 30));
+        knight.addSkill(new Skill("Skill 1", 40, 30,0));
+        knight.addSkill(new Skill("Skill 2", 70, 30,2));
 
         warriors.put(fighter.getName(), fighter);
         warriors.put(archer.getName(), archer);

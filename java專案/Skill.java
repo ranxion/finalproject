@@ -7,11 +7,16 @@ public class Skill implements Serializable{
     private int attack;
     private int range;
     private boolean control;
+    private int cooldown; // 冷卻時間（回合數或秒數）
+    private int cooldownRemaining; // 剩餘冷卻時間
+
     
-    public Skill(String name, int attack, int range) {
+    public Skill(String name, int attack, int range,int cooldown) {
         this.name = name;
         this.attack = attack;
         this.range = range;
+        this.cooldown = cooldown;
+        this.cooldownRemaining = 0; // 初始冷卻為 0
     }
 
 
@@ -61,6 +66,20 @@ public class Skill implements Serializable{
 
     public void setControl(boolean control) {
         this.control = control;
+    }
+
+    public void startCooldown() {
+        cooldownRemaining = cooldown;
+    }
+
+    public void reduceCooldown() {
+        if (cooldownRemaining > 0) {
+            cooldownRemaining--;
+        }
+    }
+
+    public int getCooldownRemaining() {
+        return cooldownRemaining;
     }
 
     @Override

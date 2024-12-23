@@ -3,6 +3,8 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.RenderingHints;
+
 import java.awt.geom.Ellipse2D;
 import java.awt.image.BufferedImage;
 import java.io.Serializable;
@@ -24,13 +26,15 @@ public class Warrior implements Serializable, Cloneable {
     public Team team;
     public Skill selectSkill;
     public State state = State.NULL;
+    private type type;
 
-    public Warrior(int health, int moveRange, BufferedImage img, Team team) {
+    public Warrior(int health, int moveRange, BufferedImage img, Team team,type type) {
         this.health = health;
         this.moveRange = moveRange;
         this.image = img;
         this.team = team;
         this.name = "新角色";
+        this.type=type;
         this.skills = new LinkedList<>();
     }
 
@@ -56,9 +60,16 @@ public class Warrior implements Serializable, Cloneable {
     public void attack(Warrior attacked) {
         if (attackControl && selectSkill != null) {
             attacked.setHealth(attacked.getHealth() - selectSkill.getAttack());
+            selectSkill.startCooldown();
             state = State.NULL;
             setMoveControl(false);
             setAttackControl(false);
+        }
+    }
+
+    public void reduceSkillCooldowns() {
+        for (Skill skill : skills) { // 假設角色有一個技能列表 `skills`
+            skill.reduceCooldown();
         }
     }
 
@@ -106,6 +117,10 @@ public class Warrior implements Serializable, Cloneable {
         return Body != null ? new Point(Body.x, Body.y) : null;
     }
 
+    public type getType() {
+        return this.type; // 例如 "Archer" 或 "Knight"
+    }
+
     public void updatePosition(Point position) {
         if (Body == null) {
             Body = new Rectangle(position.x, position.y, size.x, size.y);
@@ -135,15 +150,52 @@ public class Warrior implements Serializable, Cloneable {
         return this.team == team;
     }
 
-    public void paint(Graphics g) {
-        if (Body != null) {
-            g.setColor(team == Team.BLUE ? Color.BLUE : Color.RED);
-            g.fillRect(Body.x, Body.y, Body.width, Body.height);
 
-            g.setColor(Color.WHITE);
-            g.drawString(name, Body.x + 5, Body.y + 20);
+    public void paint(Graphics g) {
+        Graphics2D g2d = (Graphics2D) g;
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+    
+        // 根據角色類型設計外觀
+        switch (this.getName()) {
+            case "King_Blue":
+                g2d.setColor(Color.BLUE);
+                g2d.fillOval(Body.x, Body.y, size.x, size.y); // 藍國王
+                break;
+            case "King_Red":
+                g2d.setColor(Color.RED);
+                g2d.fillOval(Body.x, Body.y, size.x, size.y); // 紅國王
+                break;
+            case "Fighter_Blue":
+                g2d.setColor(Color.BLUE);
+                g2d.fillRect(Body.x, Body.y, size.x, size.y);
+                break;
+            case "Fighter_Red":
+                g2d.setColor(Color.RED);
+                g2d.fillOval(Body.x, Body.y, size.x, size.y / 2); 
+                break;
+            case "Archer_Red":
+                g2d.setColor(Color.RED);
+                g2d.fillOval(Body.x, Body.y, size.x, size.y / 2); 
+                break;
+            case "Archer_Blue":
+                g2d.setColor(Color.BLUE);
+                g2d.fillRect(Body.x, Body.y, size.x, size.y);
+                break;
+            case "Knight_Red":
+                g2d.setColor(Color.DARK_GRAY);
+                g2d.fillRect(Body.x, Body.y, size.x, size.y); 
+                break;
+            case "Knight_Blue":
+                g2d.setColor(Color.GRAY);
+                g2d.fillRect(Body.x, Body.y, size.x, size.y); 
+                break;
         }
+    
+        // 畫出角色的生命值
+        g2d.setColor(Color.BLACK);
+        g2d.drawString("HP: " + health, Body.x, Body.y - 5);
     }
+    
 
     public void paintMoveRange(Graphics2D g2d) {
         if (state == State.MOVE && selectControl && moveControl) {
@@ -157,15 +209,19 @@ public class Warrior implements Serializable, Cloneable {
 
     public void paintSkillRange(Graphics2D g2d, Skill skill) {
         if (skill != null && skill.getControl() && attackControl) {
-            g2d.setColor(Color.RED);
             int cx = (int) Body.getCenterX();
             int cy = (int) Body.getCenterY();
             int range = skill.getRange();
             rangeHitBox = new Ellipse2D.Double(cx - range, cy - range, 2 * range, 2 * range);
             g2d.draw(rangeHitBox);
         }
-        skill.setControl(false);
+
     }
+    
+
+
+
+
 
     public void initializeMoveRange() {
         rangeHitBox = new Ellipse2D.Double(

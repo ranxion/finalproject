@@ -7,9 +7,9 @@ enum Team{
     public String toString() {
         switch (this) {
             case BLUE:
-                return "BlueTeam";
+                return "Blue";
             case RED:
-                return "RedTeam";
+                return "Red";
             default:
                 return "UnknownTeam";
         }

@@ -47,6 +47,7 @@ public class GamePanel extends JPanel {
         new Thread(this::listenToServer).start();
     
         initializePanels(window);
+        configureSplitPanes(window);
         configureMouseEvents();
         updateCardPanel();
         updateTurnPanel();
@@ -59,10 +60,12 @@ public class GamePanel extends JPanel {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
+                g.setColor(new Color(144, 238, 144)); // 淺綠色 (Light Green)
+                g.fillRect(0, 0, getWidth(), getHeight());
                 drawGameObjects(g);
             }
         };
-
+        gamePanel.repaint();
         // 左下部分 (卡牌顯示區)
         cardPanel = new JPanel(new GridLayout(1, 6, 10, 10));
 
@@ -198,6 +201,7 @@ public class GamePanel extends JPanel {
                         sendWarriorUpdate(selectedCharacter); // 更新伺服器
                         sendWarriorUpdate(war);              // 同步攻擊目標
                         updateEnemyControlPanel(war);
+                        updateControlPanel(selectedCharacter);
                         selectedCharacter.selectControl = false;
                         selectedCharacter.rangeHitBox = null;
                         selectedCharacter.selectSkill.setControl(false);
@@ -309,10 +313,15 @@ public class GamePanel extends JPanel {
         controlPanel.removeAll();
 
         for (Skill skill : warrior.getSkills()) {
-            JButton button = new JButton(skill.getName());
+            JButton button = new JButton();
+            if (skill.getCooldownRemaining()!=0) {
+                button = new JButton(" (冷卻中：" + skill.getCooldownRemaining() + ")");
+            }else{
+                button = new JButton(skill.getName());
+            }
             button.addActionListener(e -> {
-                if (GameTurn == Turn.FIRST && playerTeam == Team.BLUE && warrior.team == Team.BLUE ||
-                    GameTurn == Turn.SECOND && playerTeam == Team.RED && warrior.team == Team.RED) {
+                if (GameTurn == Turn.FIRST && playerTeam == Team.BLUE && warrior.team == Team.BLUE && skill.getCooldownRemaining()==0||
+                    GameTurn == Turn.SECOND && playerTeam == Team.RED && warrior.team == Team.RED && skill.getCooldownRemaining()==0) {
                     warrior.state = State.ATTACK;
                     gameState = GameState.FIGHT;
                     warrior.selectSkill = skill;
@@ -373,9 +382,11 @@ public class GamePanel extends JPanel {
     //傳送傳送Warrior資料
     private void sendWarriorUpdate(Warrior warrior) {
         try {
+            System.out.println("Sending warrior update: " + warrior.getName());
             out.writeObject(warrior);  // 傳送完整角色物件
             out.flush();
         } catch (IOException e) {
+            System.err.println("Failed to send warrior update: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -422,7 +433,9 @@ public class GamePanel extends JPanel {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        
+        for (Warrior warrior : warriors) {
+            warrior.reduceSkillCooldowns();
+        }
         hasSummonedThisTurn = false; // 重置召喚限制
         // 使用副本來迭代，避免 ConcurrentModificationException
         LinkedList<Warrior> warriorsCopy = new LinkedList<>(warriors);

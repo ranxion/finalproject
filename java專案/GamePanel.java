@@ -69,10 +69,10 @@ public class GamePanel extends JPanel {
 
                 // 標記玩家半場區域
                 if (playerTeam == Team.BLUE) {
-                    g2d.setColor(new Color(0, 0, 255, 50)); // 藍隊半透明藍色
+                    g2d.setColor(new Color(0, 0, 255, 10)); // 藍隊半透明藍色
                     g2d.fillRect(0, 0, middleLine, gamePanel.getHeight());
                 } else if (playerTeam == Team.RED) {
-                    g2d.setColor(new Color(255, 0, 0, 50)); // 紅隊半透明紅色
+                    g2d.setColor(new Color(255, 0, 0, 10)); // 紅隊半透明紅色
                     g2d.fillRect(middleLine, 0, gamePanel.getWidth() - middleLine, gamePanel.getHeight());
                 }
 

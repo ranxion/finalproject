@@ -1,6 +1,7 @@
 enum Turn{
     FIRST,
     SECOND;
+    private static final long serialVersionUID = 1L;
     @Override
     public String toString() {
         switch (this) {

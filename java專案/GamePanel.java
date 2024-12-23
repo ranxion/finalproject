@@ -15,31 +15,43 @@ public class GamePanel extends JPanel {
     private JPanel enemyControlPanel; // 敵方角色控制區
     private JTextArea infoArea;     // 角色資訊區
     private JTextArea enemyInfoArea; // 敵方角色資訊區
-    private LinkedList<Warrior> warriors; // 所有遊戲角色
+    private LinkedList<Warrior> warriors= new LinkedList<>();; // 所有遊戲角色
     private Warrior selectedCharacter;  //被選擇角色
     private GameState gameState = GameState.START;  //遊戲狀態
     private Turn GameTurn = Turn.FIRST; //遊戲回合
     private Team playerTeam = Team.BLUE;    //玩家隊伍
+    private LinkedList<Warrior> cardWarriors = new LinkedList<>(); // 卡片角色
+    private LinkedList<Warrior> summonedWarriors = new LinkedList<>(); // 已召喚角色
 
     private ObjectOutputStream out;
     private ObjectInputStream in;
-    private Socket socket;
+
     //遊戲執行
     public GamePanel(JFrame window, String serverAddress, int port) throws IOException, ClassNotFoundException {
-        socket = new Socket(serverAddress, port);
+        Socket socket = new Socket(serverAddress, port);
         out = new ObjectOutputStream(socket.getOutputStream());
         in = new ObjectInputStream(socket.getInputStream());
-
+    
         // 接收伺服器分配的 Team
         playerTeam = (Team) in.readObject();
         System.out.println("Assigned team: " + playerTeam);
-
+    
+        // 接收初始化角色資料
+        warriors = (LinkedList<Warrior>) in.readObject();
+        for (Warrior warrior : warriors) {
+            if (warrior.team == playerTeam) {
+                cardWarriors.add(warrior); // 初始化卡片角色
+            }
+        }
+    
         new Thread(this::listenToServer).start();
-
+    
         initializePanels(window);
-        initializeGame();
         configureMouseEvents();
+        updateCardPanel();
+        updateTurnPanel();
     }
+    
     //戰鬥進行UI
     private void initializePanels(JFrame window) {
         // 左上部分 (遊戲畫面)
@@ -50,11 +62,9 @@ public class GamePanel extends JPanel {
                 drawGameObjects(g);
             }
         };
-        gamePanel.setLayout(new BorderLayout());
-        gamePanel.add(new JLabel("點擊角色以顯示控制選項和資訊。"), BorderLayout.PAGE_START);
 
         // 左下部分 (卡牌顯示區)
-        cardPanel = new JPanel(new GridLayout(1, 4, 10, 10));
+        cardPanel = new JPanel(new GridLayout(1, 6, 10, 10));
 
         //右上部分(回合控制區)
         turnPanel=new JPanel(new GridLayout(3, 1, 10, 10));
@@ -104,37 +114,6 @@ public class GamePanel extends JPanel {
         this.setLayout(new BorderLayout());
         this.add(horizontalSplit, BorderLayout.CENTER);
     }
-    //初始化遊戲
-    private void initializeGame() {
-        // warriors = new LinkedList<>();
-
-        // Warrior Fighter = new Warrior(100, 150,  null,playerTeam);
-        // Fighter.setName("Fighter");
-        // Fighter.addSkill(new Skill("Skill 1", 25, 50));
-        // Fighter.addSkill(new Skill("Skill 2", 5, 70));
-
-        // Warrior Archer = new Warrior(50, 80,  null,playerTeam);
-        // Archer.setName("Archer");
-        // Archer.addSkill(new Skill("Skill 1", 35, 120));
-        // Archer.addSkill(new Skill("Skill 2", 600, 150));
-
-        // Warrior Knight = new Warrior(80, 300,  null,playerTeam);
-        // Knight.setName("Knigh");
-        // Knight.addSkill(new Skill("Skill 1", 40, 30));
-        // Knight.addSkill(new Skill("Skill 2", 70, 30));
-
-        // warriors.add(Fighter);
-        // warriors.add(Archer);
-        // warriors.add(Knight);
-
-        // // 傳送初始角色到伺服器
-        // for (Warrior warrior : warriors) {
-        //     sendWarriorUpdate(warrior);
-        // }
-
-        updateCardPanel();
-        updateTurnPanel();
-    }
     //偵測滑鼠點擊
     private void configureMouseEvents() {
         gamePanel.addMouseListener(new MouseAdapter() {
@@ -144,249 +123,130 @@ public class GamePanel extends JPanel {
             }
         });
     }
-    //滑鼠點擊事件
+
+    // 滑鼠點擊事件處理
     private void handleMouseClick(Point click_pos) {
         System.out.println("GameState: " + gameState);
         System.out.println("Click Position: " + click_pos);
+        if ((GameTurn == Turn.FIRST && playerTeam == Team.BLUE) || (GameTurn == Turn.SECOND && playerTeam == Team.RED)) {
+            processClickForTeam(click_pos);
+        } else {
+            notYourTurnSelect(click_pos);
+        }
+    }
+    
+    // 滑鼠點擊遊戲狀態處理
+    private void processClickForTeam(Point click_pos) {    
+        switch (gameState) {
+            case CALL:
+                if (selectedCharacter != null) {                  
+                    summonedWarriors.add(selectedCharacter);
+                    cardWarriors.remove(selectedCharacter);
+                    updateCardPanel(); // 更新卡牌面板
+                    selectedCharacter.updatePosition(click_pos);
+                    warriors.add(selectedCharacter); // 確保添加到渲染集合
+                    sendSummonRequest(selectedCharacter.getName(), click_pos);
+                    sendWarriorUpdate(selectedCharacter); 
+                    gameState = GameState.START;
+                    repaint();
+                }
+                break;
+    
+            case FIGHT:
+                if (selectedCharacter != null) {
+                    processFightAction(click_pos);
+                }
+                break;
+    
+            case START:
+                selectCharacterAt(click_pos);
+                break;
+        }
+    }
+    
+    // 處理移動或攻擊    
+    private void processFightAction(Point click_pos) {
 
-        //回合一判斷
-        switch (GameTurn) {
-            case FIRST:
-                //玩家隊伍藍隊判斷
-                if(playerTeam==Team.BLUE){
-                    //選擇角色狀態判斷
-                    switch (gameState) {
-                        //召喚狀態
-                        case CALL:
-                            selectedCharacter.Body = new Rectangle(click_pos.x, click_pos.y, selectedCharacter.size.x, selectedCharacter.size.y);
-                            gameState=GameState.START;
-                            sendWarriorUpdate(selectedCharacter);
-                            gamePanel.repaint();
-                            System.out.println("召喚角色: " + selectedCharacter.getName() + " at " + click_pos);
-                            break;
-                        //戰鬥狀態                
-                        case FIGHT:
-                            switch (selectedCharacter.state) {
-                                //判斷移動
-                                case MOVE:
-                                    //是否在範圍內
-                                    if(selectedCharacter.rangeHitBox.contains(click_pos)){
-                                        selectedCharacter.Move(click_pos);
-                                        sendWarriorUpdate(selectedCharacter);
-                                        gamePanel.repaint();
-                                        return;
-                                    }
-                                    selectedCharacter.selectControl=false;
-                                    //selectedCharacter.state=State.NULL;
-                                    gameState=GameState.START;
-                                    gamePanel.repaint();
-                                    return;
-                                //判斷攻擊                 
-                                case ATTACK:
-                                    for (Warrior war : warriors) {                                       
-                                        //判斷是否點擊士兵、攻擊角色是否為同隊、角色是否為空、是否在範圍內
-                                        if (war.Body!=null && selectedCharacter.rangeHitBox.contains(click_pos) && war.Body.contains(click_pos) && selectedCharacter.team!=war.team) {
-                                            System.out.println("success attack : " + war.getName());
-                                            if(selectedCharacter.team==Team.BLUE){
-                                                selectedCharacter.Attack(war);
-                                                updateEnemyControlPanel(war);
-                                                sendWarriorUpdate(selectedCharacter);
-                                                sendWarriorUpdate(war);
-                                                gamePanel.repaint();
-                                                gameState=GameState.START;
-                                                return;
-                                            }
-                                        }
-                                        selectedCharacter.state=State.MOVE;
-                                        gamePanel.repaint();
-                                    }         
-                                    return;
-                                //待機狀態
-                                case NULL:
-                                    for (Warrior war : warriors) {                                       
-                                        //判斷是否點擊士兵
-                                        if (war.Body!=null &&war.Body.contains(click_pos)) {
-                                            selectedCharacter=war;
-                                            updateControlPanel(selectedCharacter);
-                                            selectedCharacter.state=State.MOVE;
-                                            selectedCharacter.selectControl=true;
-                                            System.out.println("Select : " + war.getName());
-                                            gamePanel.repaint();
-                                            return;
-                                        }
-                                        gameState=GameState.START;
-                                        gamePanel.repaint();
-                                    }
-                                    clearControlPanel();
-                                    return;
-                            }
-                        //初始狀態
-                        case START:                            
-                            for (Warrior war : warriors) {                                       
-                                //判斷是否點擊士兵
-                                if (war.Body!=null && war.Body.contains(click_pos)) {
-                                    selectedCharacter=war;
-                                    //角色為藍隊
-                                    if(selectedCharacter.team==Team.BLUE){
-                                        updateControlPanel(selectedCharacter);
-                                        gameState=GameState.FIGHT;
-                                        selectedCharacter.state=State.MOVE;
-                                        selectedCharacter.selectControl=true;
-                                        System.out.println("Select : " + war.getName());
-                                        gamePanel.repaint();
-                                        return;
-                                    }
-                                    //角色為紅隊
-                                    else{
-                                        updateEnemyControlPanel(selectedCharacter);
-                                        return;
-                                    }
-                                }
-                            }
-                            clearControlPanel();
-                            return;
+        switch (selectedCharacter.state) {
+            case MOVE:
+                if (selectedCharacter.rangeHitBox != null && selectedCharacter.rangeHitBox.contains(click_pos)) {
+                    selectedCharacter.Move(click_pos);
+                    selectedCharacter.rangeHitBox = null;
+                    sendWarriorUpdate(selectedCharacter); // 更新伺服器
+                    gameState=GameState.START;
+                    break;
+                }
+                selectedCharacter.state=State.NULL;
+                selectedCharacter.selectControl=false;
+                sendWarriorUpdate(selectedCharacter);
+                gameState=GameState.START;
+                clearControlPanel();
+                repaint();
+                break;
+            case ATTACK:
+                for (Warrior war : warriors) {
+                    if (selectedCharacter.rangeHitBox != null && war.Body != null && selectedCharacter.rangeHitBox.contains(click_pos) &&
+                        war.Body.contains(click_pos) && !selectedCharacter.isAlly(war.team)) {
+                        selectedCharacter.Attack(war);
+                        sendWarriorUpdate(selectedCharacter); // 更新伺服器
+                        sendWarriorUpdate(war);              // 同步攻擊目標
+                        selectedCharacter.selectControl = false;
+                        selectedCharacter.rangeHitBox = null;
+                        repaint();
+                        gameState=GameState.START;
+                        break;
                     }
                 }
-                //玩家隊伍紅隊判斷
-                else{
-                    for (Warrior war : warriors) {                                       
-                        //判斷是否點擊士兵
-                        if (war.Body!=null && war.Body.contains(click_pos)) {
-                            selectedCharacter=war;
-                            //角色為紅隊
-                            if(selectedCharacter.team==Team.RED){
-                                updateControlPanel(selectedCharacter);
-                                System.out.println("Select : " + war.getName());
-                                return;
-                            }
-                            //角色為藍隊
-                            else{
-                                updateEnemyControlPanel(selectedCharacter);
-                                return;
-                            }
-                        }                        
-                    }
-                    clearControlPanel();
-                    return;
+                selectedCharacter.selectSkill.setControl(false);
+                selectedCharacter.state=State.MOVE;
+                selectedCharacter.rangeHitBox = null;
+                repaint();
+                break;
+            default:
+                return;
+                
+        }
+    }
+    
+    // 你的回合選擇角色
+    private void selectCharacterAt(Point click_pos) {
+        for (Warrior war : warriors) {
+            if (war.Body != null && war.Body.contains(click_pos)) {
+                selectedCharacter = war;
+                if (selectedCharacter.team == playerTeam) {
+                    gameState = GameState.FIGHT;
+                    selectedCharacter.state=State.MOVE;
+                    selectedCharacter.selectControl=true;
+                    System.out.println(selectedCharacter.state);
+                    // 初始化移動範圍
+                    if (selectedCharacter.rangeHitBox == null) {
+                        selectedCharacter.initializeMoveRange();
+                    }                    
+                    updateControlPanel(selectedCharacter);
+                    repaint();
+                    break;
                 }
-            //回合二判斷
-            case SECOND:
-                //玩家隊伍紅隊判斷
-                if(playerTeam==Team.RED){
-                    switch (gameState) {
-                        //召喚狀態
-                        case CALL:
-                            selectedCharacter.Body = new Rectangle(click_pos.x, click_pos.y, selectedCharacter.size.x, selectedCharacter.size.y);
-                            gamePanel.repaint();
-                            gameState=GameState.START;
-                            sendWarriorUpdate(selectedCharacter);
-                            System.out.println("召喚角色: " + selectedCharacter.getName() + " at " + click_pos);
-                            break; 
-                        //戰鬥狀態               
-                        case FIGHT:
-                            switch (selectedCharacter.state) {
-                                //判斷移動
-                                case MOVE:
-                                    //是否在範圍內
-                                    if(selectedCharacter.rangeHitBox.contains(click_pos)){
-                                        selectedCharacter.Move(click_pos);
-                                        sendWarriorUpdate(selectedCharacter);
-                                        gamePanel.repaint();
-                                        return;
-                                    }
-                                    selectedCharacter.selectControl=false;
-                                    //selectedCharacter.state=State.NULL;
-                                    gameState=GameState.START;
-                                    gamePanel.repaint();
-                                    return;
-                                //判斷攻擊                 
-                                case ATTACK:
-                                    for (Warrior war : warriors) {                                       
-                                        //判斷是否點擊士兵、攻擊角色是否為同隊、角色是否為空、是否在範圍內
-                                        if (war.Body!=null && selectedCharacter.rangeHitBox.contains(click_pos) && war.Body.contains(click_pos) && selectedCharacter.team!=war.team) {
-                                            System.out.println("success attack : " + war.getName());
-                                            if(selectedCharacter.team==Team.RED){
-                                                selectedCharacter.Attack(war);
-                                                updateEnemyControlPanel(war);
-                                                sendWarriorUpdate(selectedCharacter);
-                                                sendWarriorUpdate(war);
-                                                gamePanel.repaint();
-                                                gameState=GameState.START;
-                                                return;
-                                            }
-                                        }
-                                        selectedCharacter.state=State.MOVE;
-                                        gamePanel.repaint();
-                                    }         
-                                    return;
-                                //待機
-                                case NULL:
-                                    for (Warrior war : warriors) {                                       
-                                        //判斷是否點擊士兵
-                                        if (war.Body!=null &&war.Body.contains(click_pos)) {
-                                            selectedCharacter=war;
-                                            updateControlPanel(selectedCharacter);
-                                            selectedCharacter.state=State.MOVE;
-                                            selectedCharacter.selectControl=true;
-                                            System.out.println("Select : " + war.getName());
-                                            gamePanel.repaint();
-                                            return;
-                                        }
-                                        gameState=GameState.START;
-                                        gamePanel.repaint();
-                                    }
-                                    clearControlPanel();
-                                    return;
-                            }
-                        //準備階段
-                        case START:                            
-                            for (Warrior war : warriors) {                                       
-                                //判斷是否點擊士兵
-                                if (war.Body!=null && war.Body.contains(click_pos)) {
-                                    selectedCharacter=war;
-                                    //角色為紅隊
-                                    if(selectedCharacter.team==Team.RED){
-                                        updateControlPanel(selectedCharacter);
-                                        gameState=GameState.FIGHT;
-                                        selectedCharacter.state=State.MOVE;
-                                        selectedCharacter.selectControl=true;
-                                        System.out.println("Select : " + war.getName());
-                                        gamePanel.repaint();
-                                        return;
-                                    }
-                                    //角色為藍隊
-                                    else{
-                                        updateEnemyControlPanel(selectedCharacter);
-                                        return;
-                                    }
-                                }
-                            }
-                            clearControlPanel();
-                            return;
-                    }
+                updateEnemyControlPanel(selectedCharacter);
+                repaint();
+                break;
+            }
+            clearControlPanel();
+        }       
+
+    }
+
+    //不是你的回合選擇角色
+    private void notYourTurnSelect(Point click_pos) {
+        for (Warrior war : warriors) {
+            if (war.Body != null && war.Body.contains(click_pos)) {
+                selectedCharacter = war;
+                if (selectedCharacter.team == playerTeam) {             
+                    updateControlPanel(selectedCharacter);
+                } else {
+                    updateEnemyControlPanel(selectedCharacter);
                 }
-                //玩家為藍隊
-                else{
-                    for (Warrior war : warriors) {                                       
-                        //判斷是否點擊士兵
-                        if (war.Body!=null && war.Body.contains(click_pos)) {
-                            selectedCharacter=war;
-                            //角色為藍隊
-                            if(selectedCharacter.team==Team.BLUE){
-                                updateControlPanel(selectedCharacter);
-                                System.out.println("Select : " + war.getName());
-                                return;
-                            }
-                            //角色為紅隊
-                            else{
-                                updateEnemyControlPanel(selectedCharacter);
-                                return;
-                            }
-                        }
-                    }
-                    clearControlPanel();
-                    return;
-                }
+                repaint();
+            }
         }
     }
 
@@ -394,35 +254,45 @@ public class GamePanel extends JPanel {
     private void drawGameObjects(Graphics g) {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
+    
+        // 清除畫布，避免殘影
+        g.clearRect(0, 0, gamePanel.getWidth(), gamePanel.getHeight());
+    
         for (Warrior warrior : warriors) {
             if (warrior.Body != null && warrior.getHealth() > 0) {
+                // 繪製角色
                 warrior.paint(g);
-                if (warrior.selectControl) {
-                    warrior.paintMoveRange(g2d);
-                }
-                for(Skill skill:warrior.getSkills()){
-                    warrior.paintSkillRange(g2d, skill);                            
+    
+                // 當前回合才顯示移動範圍和技能範圍
+                if (warrior.team == playerTeam && warrior == selectedCharacter) {
+                    if (warrior.state == State.MOVE && warrior.selectControl) {
+                        warrior.paintMoveRange(g2d);
+                    }
+                    if (warrior.state == State.ATTACK && warrior.selectSkill != null) {
+                        warrior.paintSkillRange(g2d, warrior.selectSkill);
+                    }
                 }
             }
         }
     }
     
+    
     //更新卡排版面
     private void updateCardPanel() {
         cardPanel.removeAll();
-        for (Warrior warrior : warriors) {
+        for (Warrior warrior : cardWarriors) {
             JButton button = new JButton(warrior.getName());
             button.addActionListener(e -> {
                 selectedCharacter = warrior;
                 gameState = GameState.CALL;
-                System.out.println("Selected: " + gameState);
+                System.out.println("GameState: " + gameState);
             });
             cardPanel.add(button);
         }
         cardPanel.revalidate();
         cardPanel.repaint();
     }
+    
     
     //更新角色面板
     private void updateControlPanel(Warrior warrior) {
@@ -431,26 +301,29 @@ public class GamePanel extends JPanel {
         for (Skill skill : warrior.getSkills()) {
             JButton button = new JButton(skill.getName());
             button.addActionListener(e -> {
+                selectedCharacter=warrior;
                 // Add skill activation logic here
                 switch (GameTurn) {
                     case FIRST:
                         if(playerTeam==Team.BLUE && selectedCharacter.team==Team.BLUE){
-                            warrior.state=State.ATTACK;
+                            selectedCharacter.state=State.ATTACK;
                             gameState=GameState.FIGHT;
-                            warrior.selectSkill=skill;
+                            selectedCharacter.selectSkill=skill;
                             skill.setControl(true);
-                            gamePanel.repaint();
+                            //selectedCharacter.initializeSkillRange(skill);
+                            repaint();
                             System.out.println("Activated skill: " + skill.getName());
                         }
                         break;
                 
                     default:
                         if(playerTeam==Team.RED && selectedCharacter.team==Team.RED){
-                            warrior.state=State.ATTACK;
+                            selectedCharacter.state=State.ATTACK;
                             gameState=GameState.FIGHT;
-                            warrior.selectSkill=skill;
+                            selectedCharacter.selectSkill=skill;
                             skill.setControl(true);
-                            gamePanel.repaint();
+                            //selectedCharacter.initializeSkillRange(skill);
+                            repaint();
                             System.out.println("Activated skill: " + skill.getName());
                         }
                         break;
@@ -491,17 +364,29 @@ public class GamePanel extends JPanel {
         controlPanel.revalidate();
         controlPanel.repaint();
     }
-
-
-    //傳送傳送Warrior資料
-    private void sendWarriorUpdate(Warrior warrior) {
+    
+    //傳送召喚資訊
+    private void sendSummonRequest(String warriorName, Point position) {
         try {
-            out.writeObject(warrior);
+            SummonRequest summonRequest = new SummonRequest(warriorName, position);
+            out.writeObject(summonRequest);
             out.flush();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
+    //傳送傳送Warrior資料
+    private void sendWarriorUpdate(Warrior warrior) {
+        try {
+            out.writeObject(warrior);  // 傳送完整角色物件
+            out.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    
     //從Server接收資料
     private void listenToServer() {
         try {
@@ -511,17 +396,13 @@ public class GamePanel extends JPanel {
                     @SuppressWarnings("unchecked")
                     LinkedList<Warrior> updatedWarriors = (LinkedList<Warrior>) received;
     
-                    // 更新角色列表
-                    warriors = updatedWarriors;
-                    
-                    // 移除本地死亡角色
-                    warriors.removeIf(warrior -> warrior.getHealth() <= 0);
+                    warriors.clear(); // 清空當前角色
+                    warriors.addAll(updatedWarriors); // 添加伺服器發送的最新角色數據
     
-                    // 重新繪製遊戲畫面
-                    repaint();
+                    repaint(); // 重繪遊戲畫面
                 } else if (received instanceof Turn) {
                     GameTurn = (Turn) received;
-                    updateTurnPanel(); // 確保回合顯示面板更新
+                    updateTurnPanel(); // 更新回合顯示
                     System.out.println("Current turn: " + GameTurn);
                 }
             }
@@ -530,36 +411,31 @@ public class GamePanel extends JPanel {
         }
     }
     
+    
     //回合結束控制
     private void endTurn() {
-        System.out.println("Ending turn for " + playerTeam); 
         try {
             out.writeObject("END_TURN");
             out.flush();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        for (Warrior warrior : warriors) {
-            if(warrior.Body!=null){
-                sendWarriorUpdate(warrior);
-            }
+    
+        // 使用副本來迭代，避免 ConcurrentModificationException
+        LinkedList<Warrior> warriorsCopy = new LinkedList<>(warriors);
+        for (Warrior warrior : warriorsCopy) {
+            warrior.resetControls();
+            warrior.selectControl = false;
+            warrior.rangeHitBox = null;
+    
+            // 傳送更新的戰士數據
+            sendWarriorUpdate(warrior);
         }
-        turnPanel.removeAll();
-        switchTurn();
-        updateTurnPanel();
+    
+        // 更新本地畫面
         repaint();
     }
     
-    //回合交換控制
-    private void switchTurn() {
-        if (playerTeam == Team.BLUE) {
-            GameTurn = Turn.SECOND;
-        } else {
-            GameTurn = Turn.FIRST;
-        }        
-        System.out.println("Now it's " + playerTeam + "'s turn.");
-        System.out.println("Now it's " + GameTurn.toString());
-    }
     
     //回合結束按鈕
     private void updateTurnPanel() { 

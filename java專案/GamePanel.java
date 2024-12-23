@@ -60,9 +60,23 @@ public class GamePanel extends JPanel {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
-                g.setColor(new Color(144, 238, 144)); // 淺綠色 (Light Green)
-                g.fillRect(0, 0, getWidth(), getHeight());
-                drawGameObjects(g);
+                Graphics2D g2d = (Graphics2D) g;
+
+                // 繪製半場邊界線
+                g2d.setColor(Color.GRAY);
+                int middleLine = gamePanel.getWidth() / 2;
+                g2d.drawLine(middleLine, 0, middleLine, gamePanel.getHeight());
+
+                // 標記玩家半場區域
+                if (playerTeam == Team.BLUE) {
+                    g2d.setColor(new Color(0, 0, 255, 50)); // 藍隊半透明藍色
+                    g2d.fillRect(0, 0, middleLine, gamePanel.getHeight());
+                } else if (playerTeam == Team.RED) {
+                    g2d.setColor(new Color(255, 0, 0, 50)); // 紅隊半透明紅色
+                    g2d.fillRect(middleLine, 0, gamePanel.getWidth() - middleLine, gamePanel.getHeight());
+                }
+
+                drawGameObjects(g2d);
             }
         };
         gamePanel.repaint();
@@ -147,17 +161,20 @@ public class GamePanel extends JPanel {
                     gameState = GameState.START;
                     return;
                 }
-                if (selectedCharacter != null) {                  
-                    summonedWarriors.add(selectedCharacter);
-                    cardWarriors.remove(selectedCharacter);
-                    updateCardPanel(); // 更新卡牌面板
-                    selectedCharacter.updatePosition(click_pos);
-                    warriors.add(selectedCharacter); // 確保添加到渲染集合
-                    sendSummonRequest(selectedCharacter.getName(), click_pos);
-                    sendWarriorUpdate(selectedCharacter); 
-                    gameState = GameState.START;
-                    hasSummonedThisTurn = true; // 標記本回合已召喚
-                    repaint();
+                if (selectedCharacter != null) {
+                    if (isWithinSummonArea(click_pos)) {
+                        summonedWarriors.add(selectedCharacter);
+                        cardWarriors.remove(selectedCharacter);
+                        updateCardPanel();
+                        selectedCharacter.updatePosition(click_pos);
+                        warriors.add(selectedCharacter);
+                        sendSummonRequest(selectedCharacter.getName(), click_pos);
+                        sendWarriorUpdate(selectedCharacter);
+                        gameState = GameState.START;
+                        repaint();
+                    } else {
+                        JOptionPane.showMessageDialog(this, "You can only summon within your king's half of the battlefield!", "Invalid Summon", JOptionPane.WARNING_MESSAGE);
+                    }
                 }
                 break;
     
@@ -264,13 +281,24 @@ public class GamePanel extends JPanel {
         }
     }
 
+    // 客戶端檢查是否在合法召喚範圍內
+    private boolean isWithinSummonArea(Point position) {
+        int fieldMiddle = gamePanel.getWidth() / 2;
+        if (playerTeam == Team.BLUE) {
+            return position.x <= fieldMiddle; // 藍隊只能召喚在左半場
+        } else if (playerTeam == Team.RED) {
+            return position.x > fieldMiddle; // 紅隊只能召喚在右半場
+        }
+        return false;
+    }
+
     //角色繪製
     private void drawGameObjects(Graphics g) {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
     
         // 清除畫布，避免殘影
-        g.clearRect(0, 0, gamePanel.getWidth(), gamePanel.getHeight());
+        //g.clearRect(0, 0, gamePanel.getWidth(), gamePanel.getHeight());
     
         for (Warrior warrior : warriors) {
             if (warrior.Body != null && warrior.getHealth() > 0) {

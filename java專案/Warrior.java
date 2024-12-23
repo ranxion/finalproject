@@ -220,9 +220,6 @@ public class Warrior implements Serializable, Cloneable {
     
 
 
-
-
-
     public void initializeMoveRange() {
         rangeHitBox = new Ellipse2D.Double(
             Body.getX() - moveRange,

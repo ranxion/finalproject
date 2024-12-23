@@ -88,20 +88,40 @@ public class GameServer {
         Team team = clientTeams.get(clientSocket);
     
         if (hasSummoned) {
-            System.out.println("Summoning already done this turn.");
             sendErrorMessage(clientSocket, "You can only summon once per turn!");
+            return;
+        }
+    
+        // 確保召喚位置在己方國王半場
+        Point position = request.getPosition();
+        boolean validPosition = isValidSummonPosition(position, team);
+    
+        if (!validPosition) {
+            sendErrorMessage(clientSocket, "You can only summon within your king's half of the battlefield!");
             return;
         }
     
         Warrior warriorToSummon = findWarriorByNameAndTeam(request.getWarriorName(), team);
         if (warriorToSummon != null) {
-            warriorToSummon.updatePosition(request.getPosition());
+            warriorToSummon.updatePosition(position);
             warriors.put(warriorToSummon.getName(), warriorToSummon);
             hasSummoned = true; // 標記本回合已經召喚
             broadcastGameState(); // 廣播遊戲狀態
-            System.out.println("Summoned: " + warriorToSummon.getName() + " at " + request.getPosition());
+            System.out.println("Summoned: " + warriorToSummon.getName() + " at " + position);
         }
     }
+    
+    // 檢查是否在合法的召喚位置
+    private boolean isValidSummonPosition(Point position, Team team) {
+        int fieldMiddle = panelWidth / 2;
+        if (team == Team.BLUE) {
+            return position.x <= fieldMiddle; // 藍隊只能召喚在左半場
+        } else if (team == Team.RED) {
+            return position.x > fieldMiddle; // 紅隊只能召喚在右半場
+        }
+        return false;
+    }
+    
     
 
     private Warrior findWarriorByNameAndTeam(String name, Team team) {

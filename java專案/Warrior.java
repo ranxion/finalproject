@@ -8,62 +8,66 @@ import java.awt.image.BufferedImage;
 import java.io.Serializable;
 import java.util.LinkedList;
 
-public class Warrior implements Serializable{
+public class Warrior implements Serializable, Cloneable {
     private static final long serialVersionUID = 1L;
+
     private int health;
     private int moveRange;
     private String name;
-    private LinkedList<Skill> Skills;
-    private boolean Movecontrol=true;
-    public boolean selectControl=false;
-    public Point size=new Point(30,50);
+    private LinkedList<Skill> skills;
+    private boolean moveControl = true, attackControl = true;
+    public boolean selectControl = false;
+    public Point size = new Point(30, 50);
     public Rectangle Body;
-    public Ellipse2D rangeHitBox; 
-    public BufferedImage image;
+    public Ellipse2D rangeHitBox;
+    public transient BufferedImage image; // 圖片不序列化
     public Team team;
     public Skill selectSkill;
-    public State state=State.NULL;
+    public State state = State.NULL;
 
-    public Warrior(int health,int moveRange, BufferedImage img,Team team) {
+    public Warrior(int health, int moveRange, BufferedImage img, Team team) {
         this.health = health;
         this.moveRange = moveRange;
-        //this.Body = new Rectangle(position.x, position.y, size.x, size.y);
         this.image = img;
-        this.team=team;
-        name = "A New Warrior";
-        Skills = new LinkedList<>();
+        this.team = team;
+        this.name = "新角色";
+        this.skills = new LinkedList<>();
     }
 
     public void addSkill(Skill skill) {
-        Skills.add(skill);
+        skills.add(skill);
     }
 
     public LinkedList<Skill> getSkills() {
-        return Skills;
+        return skills;
     }
 
-    public void Move(Point position) {
-        if(state==State.MOVE && Movecontrol){
-            Body = new Rectangle(position.x, position.y, size.x, size.y);
-            state=State.NULL;
-            this.setMovecontrol(false);
+    // 移動方法，增加邊界限制
+    public void move(Point position, Rectangle bounds) {
+        if (state == State.MOVE && moveControl) {
+            int newX = Math.max(bounds.x, Math.min(bounds.x + bounds.width - size.x, position.x));
+            int newY = Math.max(bounds.y, Math.min(bounds.y + bounds.height - size.y, position.y));
+            updatePosition(new Point(newX, newY));
+            state = State.NULL;
+            this.setMoveControl(false);
         }
     }
-    public void Attack(Warrior attacked) {
-        attacked.setHealth(attacked.getHealth()-selectSkill.getAttack());
-        state=State.NULL;
-        setMovecontrol(false);
+
+    public void attack(Warrior attacked) {
+        if (attackControl && selectSkill != null) {
+            attacked.setHealth(attacked.getHealth() - selectSkill.getAttack());
+            state = State.NULL;
+            setMoveControl(false);
+            setAttackControl(false);
+        }
     }
+
     public int getMoveRange() {
         return moveRange;
     }
 
     public void setMoveRange(int range) {
-        if (range < 0 || range > 10000) {
-            return;
-        }
-
-        this.moveRange = range;
+        this.moveRange = Math.max(0, Math.min(range, 10000));
     }
 
     public int getHealth() {
@@ -82,50 +86,112 @@ public class Warrior implements Serializable{
         this.name = name;
     }
 
-    public boolean getMovecontrol(){
-        return Movecontrol;
+    public boolean getMoveControl() {
+        return moveControl;
     }
 
-    public void setMovecontrol(boolean control) {
-        this.Movecontrol = control;
+    public boolean getAttackControl() {
+        return attackControl;
+    }
+
+    public void setMoveControl(boolean control) {
+        this.moveControl = control;
+    }
+
+    public void setAttackControl(boolean control) {
+        this.attackControl = control;
+    }
+
+    public Point getPosition() {
+        return Body != null ? new Point(Body.x, Body.y) : null;
+    }
+
+    public void updatePosition(Point position) {
+        if (Body == null) {
+            Body = new Rectangle(position.x, position.y, size.x, size.y);
+        } else {
+            Body.setLocation(position);
+        }
+    }
+
+    @Override
+    public Warrior clone() {
+        try {
+            return (Warrior) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError();
+        }
+    }
+
+    public void resetControls() {
+        this.moveControl = true;
+        this.attackControl = true;
+        this.state = State.NULL;
+        this.selectControl = false;
+        this.selectSkill = null;
+    }
+
+    public boolean isAlly(Team team) {
+        return this.team == team;
     }
 
     public void paint(Graphics g) {
-        // 繪製本體
-        if (image != null) {
-            g.drawImage(image, Body.x, Body.y, Body.width, Body.height, null);
-        } else {
-            g.setColor(Color.RED);
-            g.drawRect(Body.x, Body.y, Body.width, Body.height);
+        if (Body != null) {
+            g.setColor(team == Team.BLUE ? Color.BLUE : Color.RED);
+            g.fillRect(Body.x, Body.y, Body.width, Body.height);
+
+            g.setColor(Color.WHITE);
+            g.drawString(name, Body.x + 5, Body.y + 20);
         }
     }
-    
-    public void paintMoveRange(Graphics2D g2d){
-        // 繪製移動範圍
-        if(state==State.MOVE && Movecontrol){
-            g2d.setColor(Color.BLACK);
+
+    public void paintMoveRange(Graphics2D g2d) {
+        if (state == State.MOVE && selectControl && moveControl) {
+            g2d.setColor(Color.BLUE);
             int cx = (int) Body.getCenterX();
             int cy = (int) Body.getCenterY();
-            rangeHitBox= new Ellipse2D.Double(cx- moveRange, cy- moveRange,2* moveRange, 2 * moveRange);
-            g2d.draw(rangeHitBox);            
-        }        
+            rangeHitBox = new Ellipse2D.Double(cx - moveRange, cy - moveRange, 2 * moveRange, 2 * moveRange);
+            g2d.draw(rangeHitBox);
+        }
     }
 
-    public void paintSkillRange(Graphics2D g2d,Skill skill){
-        //繪製技能範圍
-        if(skill.getControl()){            
-            g2d.setColor(Color.red);
+    public void paintSkillRange(Graphics2D g2d, Skill skill) {
+        if (skill != null && skill.getControl() && attackControl) {
+            g2d.setColor(Color.RED);
             int cx = (int) Body.getCenterX();
             int cy = (int) Body.getCenterY();
-            int range=skill.getRange();
-            rangeHitBox= new Ellipse2D.Double(cx- range, cy- range,2* range, 2 * range);
+            int range = skill.getRange();
+            rangeHitBox = new Ellipse2D.Double(cx - range, cy - range, 2 * range, 2 * range);
             g2d.draw(rangeHitBox);
         }
         skill.setControl(false);
     }
 
+    public void initializeMoveRange() {
+        rangeHitBox = new Ellipse2D.Double(
+            Body.getX() - moveRange,
+            Body.getY() - moveRange,
+            moveRange * 2,
+            moveRange * 2
+        );
+    }
+
+    public void initializeSkillRange(Skill skill) {
+        if (Body != null && skill != null) {
+            int cx = (int) Body.getCenterX();
+            int cy = (int) Body.getCenterY();
+            rangeHitBox = new Ellipse2D.Double(
+                cx - skill.getRange(),
+                cy - skill.getRange(),
+                skill.getRange() * 2,
+                skill.getRange() * 2
+            );
+        }
+    }
+    
+
     @Override
     public String toString() {
-        return "";
+        return String.format("名稱: %s, 生命值: %d, 隊伍: %s", name, health, team);
     }
 }

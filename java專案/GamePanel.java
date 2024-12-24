@@ -1,4 +1,3 @@
-import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.IOException;
@@ -6,6 +5,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.LinkedList;
+import javax.swing.*;
 
 public class GamePanel extends JPanel {
     private JPanel gamePanel;       // 主要遊戲畫面
@@ -159,13 +159,14 @@ public class GamePanel extends JPanel {
                 if (hasSummonedThisTurn) {
                     JOptionPane.showMessageDialog(this, "你本回合已經召喚過角色！", "警告", JOptionPane.WARNING_MESSAGE);
                     gameState = GameState.START;
-                    return;
+                    break;
                 }
                 if (selectedCharacter != null) {
                     if (isWithinSummonArea(click_pos)) {
                         summonedWarriors.add(selectedCharacter);
                         cardWarriors.remove(selectedCharacter);
                         updateCardPanel();
+                        hasSummonedThisTurn = true;
                         selectedCharacter.updatePosition(click_pos);
                         warriors.add(selectedCharacter);
                         sendSummonRequest(selectedCharacter.getName(), click_pos);

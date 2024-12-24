@@ -9,7 +9,7 @@ public class GameServer {
     private final Map<Socket, Team> clientTeams = new HashMap<>(); // 客戶端分配的隊伍
     private Turn currentTurn = Turn.FIRST;
     public int panelWidth,panelHeight;
-    private boolean hasSummoned = false;
+    public  boolean hasSummoned = false;
 
     public static void main(String[] args) {
         GameServer server = new GameServer(840, 640);
@@ -102,7 +102,7 @@ public class GameServer {
         }
     
         Warrior warriorToSummon = findWarriorByNameAndTeam(request.getWarriorName(), team);
-        if (warriorToSummon != null) {
+        if (warriorToSummon != null&&hasSummoned!=true) {
             warriorToSummon.updatePosition(position);
             warriors.put(warriorToSummon.getName(), warriorToSummon);
             hasSummoned = true; // 標記本回合已經召喚
